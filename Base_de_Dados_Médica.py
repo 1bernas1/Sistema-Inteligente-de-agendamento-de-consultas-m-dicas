@@ -16,6 +16,11 @@ db = mysql.connector.connect(
 
 cursor = db.cursor(dictionary=True)
 
+#__________Configuração Email___________
+
+email_remetente = "alexandre.bernardo.santos@gmail.com"
+email_senha  = "yyct edkm fhjd hqlc"
+
 #__________Encriptar Senha__________
 def encriptar(palavra):
     return hashlib.sha256(palavra.encode()).hexdigest()
@@ -59,16 +64,34 @@ def pedir_data(msg):
 def pedir_hora(msg, data=None):
     while True:
         hora = input_ou_voltar(msg)
-        if hora is None: return None
+        if hora is None:
+            return None
+
         if not validar_hora(hora):
-            print("Hora inválida! Use o formato HH:MM (00:00 a 23:59).")
+            print("Hora inválida! Use o formato HH:MM.")
             continue
+
+        hora_obj = datetime.strptime(hora, "%H:%M").time()
+        hora_min = datetime.strptime("09:00", "%H:%M").time()
+        hora_max = datetime.strptime("18:00", "%H:%M").time()
+
+        # Verificar horário permitido
+        if not (hora_min <= hora_obj <= hora_max):
+            print("Só é possível marcar consultas entre as 09:00 e as 18:00.")
+            continue
+
+        # Verificar se a hora já passou (apenas se a data for hoje)
         if data:
             data_obj = datetime.strptime(data, "%d/%m/%Y").date()
-            hora_obj = datetime.strptime(hora, "%H:%M").time()
-            if data_obj == datetime.now().date() and hora_obj <= datetime.now().time():
-                print(f"Não é possível marcar consultas nesta hora!Escolha uma hora entre (09:00-18:00) Hora atual: {datetime.now().strftime('%H:%M')}")
+            agora = datetime.now()
+
+            if data_obj == agora.date() and hora_obj <= agora.time():
+                print(
+                    f"Não é possível marcar em horas passadas! "
+                    f"Hora atual: {agora.strftime('%H:%M')}"
+                )
                 continue
+
         return hora
 
 #__________Pedir ID de Consulta Válido__________
@@ -246,22 +269,6 @@ def apagar_medico():
     except Exception as e:
         print("Erro ao apagar médico:", e)
 
-#__________Menu Admin__________
-def menu_admin(admin):
-    while True:
-        print("\nMenu ADMIN")
-        print("1 Criar médico")
-        print("2 Listar médicos")
-        print("3 Alterar médico")
-        print("4 Apagar médico")
-        print("0 Sair")
-        op = input("Escolha: ").strip()
-        if   op == "1": criar_medico()
-        elif op == "2": listar_medicos()
-        elif op == "3": alterar_medico()
-        elif op == "4": apagar_medico()
-        elif op == "0": break
-        else: print("Opção inválida!")
 
 #__________Listar Consultas Utilizador__________
 def listar_consultas(usuario, estado=None):
@@ -473,6 +480,174 @@ def listar_consultas_medico(medico, estado=None):
         print(f"{c['id_consulta']} | {c['paciente']} | {data} {c['hora_consulta']} "
               f"| {c['motivo_consulta']} | [{c['estado_consulta'].upper()}]")
     return consultas
+
+#__________Menu Listar Consultas Médico por Estado__________
+def menu_listar_consultas_medico(medico):
+    while True:
+        print("\nListar consultas por estado:")
+        print("1 Agendadas")
+        print("2 Realizadas")
+        print("3 Canceladas")
+        print("4 Todas")
+        print("0 Voltar")
+        op = input("Escolha: ").strip()
+        estados = {"1": "agendada", "2": "realizada", "3": "cancelada", "4": None}
+        if op in estados:
+            listar_consultas_medico(medico, estados[op])
+        elif op == "0":
+            break
+        else:
+            print("Opção inválida!")
+
+#__________Ver Relatórios__________
+def ver_relatorios(medico):
+    cursor.execute("""
+        SELECT r.*, u.nome AS paciente
+        FROM relatorios r
+        JOIN consultas c ON r.id_consulta = c.id_consulta
+        JOIN utilizadores u ON c.id_utilizador = u.id_utilizador
+        WHERE c.id_medico=%s
+    """, (medico["id_medico"],))
+    relatorios = cursor.fetchall()
+    if not relatorios:
+        print("Nenhum relatório encontrado!")
+        return []
+    for r in relatorios:
+        data = datetime.strptime(str(r["data_relatorio"]), "%Y-%m-%d").strftime("%d/%m/%Y")
+        print(f"{r['id_relatorio']} | {r['paciente']} | {data} | {r['descricao']}")
+    return relatorios
+
+#__________Adicionar Relatório__________
+def adicionar_relatorio(medico):
+    if not listar_consultas_medico(medico):
+        print("Você não tem consultas para adicionar relatório.")
+        return
+    consulta = pedir_id_consulta("ID da consulta para adicionar relatório: ",
+                                  id_medico=medico["id_medico"])
+    if consulta is None: return
+
+    # Verifica se já existe relatório para esta consulta
+    cursor.execute(
+        "SELECT * FROM relatorios WHERE id_consulta=%s",
+        (consulta["id_consulta"],)
+    )
+    if cursor.fetchone():
+        print("Esta consulta já tem um relatório! Use a opção Alterar Relatório para o editar.")
+        return
+
+    descricao = input_ou_voltar("Descrição do relatório: ") or ""
+    try:
+        cursor.execute(
+            "INSERT INTO relatorios (id_consulta, descricao, data_relatorio) VALUES (%s,%s,%s)",
+            (consulta["id_consulta"], descricao, datetime.now().strftime("%Y-%m-%d"))
+        )
+        db.commit()
+        print("Relatório adicionado com sucesso!")
+    except Exception as e:
+        print("Erro ao adicionar relatório:", e)
+
+#__________Alterar Relatório__________
+def alterar_relatorio(medico):
+    if not ver_relatorios(medico):
+        return
+    while True:
+        val = input_ou_voltar("ID do relatório para alterar: ")
+        if val is None: return
+        if not val.isdigit():
+            print("ID inválido! Digite novamente.")
+            continue
+        cursor.execute(
+            "SELECT r.* FROM relatorios r JOIN consultas c ON r.id_consulta=c.id_consulta "
+            "WHERE r.id_relatorio=%s AND c.id_medico=%s", (val, medico["id_medico"])
+        )
+        relatorio = cursor.fetchone()
+        if not relatorio:
+            print("Relatório não encontrado! Digite novamente.")
+            continue
+        break
+    descricao = input_ou_voltar("Nova descrição do relatório: ") or ""
+    try:
+        cursor.execute(
+            "UPDATE relatorios SET descricao=%s WHERE id_relatorio=%s",
+            (descricao, relatorio["id_relatorio"])
+        )
+        db.commit()
+        print("Relatório alterado com sucesso!")
+    except Exception as e:
+        print("Erro ao alterar relatório:", e)
+
+#__________Marcar Consulta como Realizada__________
+def marcar_consulta_realizada(medico):
+    if not listar_consultas_medico(medico, "agendada"):
+        return
+    consulta = pedir_id_consulta("ID da consulta para marcar como realizada: ",
+                                  id_medico=medico["id_medico"], estado="agendada")
+    if consulta is None: return
+    try:
+        cursor.execute(
+            "UPDATE consultas SET estado_consulta='realizada' WHERE id_consulta=%s",
+            (consulta["id_consulta"],)
+        )
+        db.commit()
+        print("Consulta marcada como realizada com sucesso!")
+    except Exception as e:
+        print("Erro ao atualizar consulta:", e)
+
+
+#__________Menu Utilizador__________
+def menu_utilizador(usuario):
+    while True:
+        print(f"\nBem-vindo {usuario['nome']}")
+        print("1 Marcar consulta")
+        print("2 Listar consultas")
+        print("3 Cancelar consulta")
+        print("4 Alterar consulta")
+        print("5 Disponibilidade médico")
+        print("0 Sair")
+        op = input("Escolha: ").strip()
+        if   op == "1": marcar_consulta(usuario)
+        elif op == "2": menu_listar_consultas(usuario)
+        elif op == "3": cancelar_consulta(usuario)
+        elif op == "4": alterar_consulta(usuario)
+        elif op == "5": disponibilidade_medico()
+        elif op == "0": break
+        else: print("Opção inválida!")
+
+#__________Menu Médico__________
+def menu_medico(medico):
+    while True:
+        print(f"\nDr(a) {medico['nome']}")
+        print("1 Ver consultas")
+        print("2 Marcar consulta como realizada")
+        print("3 Ver relatórios")
+        print("4 Adicionar relatório")
+        print("5 Alterar relatório")
+        print("0 Sair")
+        op = input("Escolha: ").strip()
+        if   op == "1": menu_listar_consultas_medico(medico)
+        elif op == "2": marcar_consulta_realizada(medico)
+        elif op == "3": ver_relatorios(medico)
+        elif op == "4": adicionar_relatorio(medico)
+        elif op == "5": alterar_relatorio(medico)
+        elif op == "0": break
+        else: print("Opção inválida!")
+
+#__________Menu Admin__________
+def menu_admin(admin):
+    while True:
+        print("\nMenu ADMIN")
+        print("1 Criar médico")
+        print("2 Listar médicos")
+        print("3 Alterar médico")
+        print("4 Apagar médico")
+        print("0 Sair")
+        op = input("Escolha: ").strip()
+        if   op == "1": criar_medico()
+        elif op == "2": listar_medicos()
+        elif op == "3": alterar_medico()
+        elif op == "4": apagar_medico()
+        elif op == "0": break
+        else: print("Opção inválida!")
 
 def principal():
     while True:
