@@ -18,19 +18,23 @@ cursor = db.cursor(dictionary=True)
 
 #__________Configuração Email___________
 
+
 email_remetente = "alexandre.bernardo.santos@gmail.com"
 email_senha  = "yyct edkm fhjd hqlc"
 
 #__________Encriptar Senha__________
+
 def encriptar(palavra):
     return hashlib.sha256(palavra.encode()).hexdigest()
 
 #__________Input ou Voltar__________
+
 def input_ou_voltar(msg):
     valor = input(msg).strip()
     return None if valor in ("0", "") else valor
 
 #__________Validar Data__________
+
 def validar_data(data):
     try:
         datetime.strptime(data, "%d/%m/%Y")
@@ -39,6 +43,7 @@ def validar_data(data):
         return False
 
 #__________Validar Hora__________
+
 def validar_hora(hora):
     try:
         datetime.strptime(hora, "%H:%M")
@@ -47,6 +52,7 @@ def validar_hora(hora):
         return False
 
 #__________Pedir Data Válida__________
+
 def pedir_data(msg):
     while True:
         data = input_ou_voltar(msg)
@@ -61,6 +67,7 @@ def pedir_data(msg):
         return data
 
 #__________Pedir Hora Válida__________
+
 def pedir_hora(msg, data=None):
     while True:
         hora = input_ou_voltar(msg)
@@ -75,12 +82,14 @@ def pedir_hora(msg, data=None):
         hora_min = datetime.strptime("09:00", "%H:%M").time()
         hora_max = datetime.strptime("18:00", "%H:%M").time()
 
-        # Verificar horário permitido
+        #________Verificar horário permitido_________
+
         if not (hora_min <= hora_obj <= hora_max):
             print("Só é possível marcar consultas entre as 09:00 e as 18:00.")
             continue
 
-        # Verificar se a hora já passou (apenas se a data for hoje)
+        #________Verificar se a hora já passou (apenas se a data for hoje)_________
+
         if data:
             data_obj = datetime.strptime(data, "%d/%m/%Y").date()
             agora = datetime.now()
@@ -95,6 +104,7 @@ def pedir_hora(msg, data=None):
         return hora
 
 #__________Pedir ID de Consulta Válido__________
+
 def pedir_id_consulta(msg, id_utilizador=None, id_medico=None, estado=None):
     while True:
         val = input_ou_voltar(msg)
@@ -116,6 +126,7 @@ def pedir_id_consulta(msg, id_utilizador=None, id_medico=None, estado=None):
 
 
 #__________Registo Utilizador__________
+
 def registar():
     print("\nRegisto (0 para voltar)")
     nome  = input_ou_voltar("Nome: ")
@@ -140,6 +151,7 @@ def registar():
 
 
 #__________Login Utilizador / Médico / Admin__________
+
 def login():
     print("\nLogin (0 para voltar)")
     nome  = input_ou_voltar("Nome: ")
@@ -167,6 +179,7 @@ def login():
 
 
 #__________Criar Médico__________
+
 def criar_medico():
     print("\nCriar Médico (0 para voltar)")
     nome  = input_ou_voltar("Nome: ")
@@ -193,6 +206,7 @@ def criar_medico():
         print("Erro ao criar médico:", e)
 
 #__________Listar Médicos__________
+
 def listar_medicos():
     cursor.execute("SELECT * FROM medicos")
     medicos = cursor.fetchall()
@@ -205,6 +219,7 @@ def listar_medicos():
     return medicos
 
 #__________Pedir ID de Médico Válido__________
+
 def pedir_medico(msg):
     while True:
         val = input_ou_voltar(msg)
@@ -220,6 +235,7 @@ def pedir_medico(msg):
         return medico
 
 #__________Alterar Médico__________
+
 def alterar_medico():
     if not listar_medicos():
         print("Nenhum médico cadastrado para alterar.")
@@ -253,6 +269,7 @@ def alterar_medico():
         print("Erro ao alterar médico:", e)
 
 #__________Apagar Médico__________
+
 def apagar_medico():
     if not listar_medicos():
         print("Nenhum médico cadastrado para apagar.")
@@ -294,6 +311,7 @@ def listar_consultas(usuario, estado=None):
     return consultas
 
 #__________Menu Listar Consultas Utilizador por Estado__________
+
 def menu_listar_consultas(usuario):
     while True:
         print("\nListar consultas por estado:")
@@ -312,6 +330,7 @@ def menu_listar_consultas(usuario):
             print("Opção inválida!")
 
 #__________Marcar Consulta__________
+
 def marcar_consulta(usuario):
     if not listar_medicos():
         print("Não há médicos disponíveis para agendamento.")
@@ -326,7 +345,8 @@ def marcar_consulta(usuario):
 
     data_mysql = datetime.strptime(data, "%d/%m/%Y").strftime("%Y-%m-%d")
 
-    # Verifica se médico está livre (apenas consultas agendadas ocupam o horário)
+    #________Verifica se médico está livre (apenas consultas agendadas ocupam o horário)_________
+
     cursor.execute("""
         SELECT * FROM consultas
         WHERE id_medico=%s AND data_consulta=%s AND hora_consulta=%s AND estado_consulta='agendada'
@@ -348,7 +368,8 @@ def marcar_consulta(usuario):
         return
     mensagem = f"Consulta marcada com Dr(a) {medico['nome']} em {data} às {hora}. Motivo: {motivo}"
 
-    # Envia email de confirmação ao utilizador
+    #________Envia email de confirmação ao utilizador_________
+
     try:
         msg = MIMEText(
             f"Olá {usuario['nome']},\n\n"
@@ -372,7 +393,8 @@ def marcar_consulta(usuario):
     except Exception as e:
         print("Erro ao enviar email:", e)
 
-    # Regista notificação na tabela notificacoes
+    #________Regista notificação na tabela notificacoes_________
+
     try:
         cursor.execute("""
             INSERT INTO notificacoes (id_utilizador, id_notificacao, mensagem, data_notificacao)
@@ -384,6 +406,7 @@ def marcar_consulta(usuario):
         print("Erro ao registrar notificação:", e)
 
 #__________Cancelar Consulta__________
+
 def cancelar_consulta(usuario):
     # Mostra apenas consultas agendadas (as únicas que podem ser canceladas)
     if not listar_consultas(usuario, "agendada"):
@@ -402,6 +425,7 @@ def cancelar_consulta(usuario):
         print("Erro ao cancelar consulta:", e)
 
 #__________Alterar Consulta__________
+
 def alterar_consulta(usuario):
     # Só faz sentido alterar consultas agendadas
     if not listar_consultas(usuario, "agendada"):
@@ -416,7 +440,8 @@ def alterar_consulta(usuario):
 
     data_mysql = datetime.strptime(data, "%d/%m/%Y").strftime("%Y-%m-%d")
 
-    # Verifica disponibilidade do médico no novo horário (ignora a própria consulta)
+    #________Verifica disponibilidade do médico no novo horário (ignora a própria consulta)_________
+
     cursor.execute("""
         SELECT * FROM consultas
         WHERE id_medico=%s AND data_consulta=%s AND hora_consulta=%s
@@ -436,6 +461,7 @@ def alterar_consulta(usuario):
         print("Erro ao alterar consulta:", e)
 
 #__________Disponibilidade Médico__________
+
 def disponibilidade_medico():
     if not listar_medicos():
         print("Não há médicos cadastrados.")
@@ -443,7 +469,8 @@ def disponibilidade_medico():
     medico = pedir_medico("ID do médico para verificar disponibilidade: ")
     if medico is None: return
 
-    # Apenas consultas agendadas representam horários ocupados
+    #________Apenas consultas agendadas representam horários ocupados___________
+
     cursor.execute(
         "SELECT data_consulta, hora_consulta FROM consultas WHERE id_medico=%s AND estado_consulta='agendada'",
         (medico["id_medico"],)
@@ -459,6 +486,7 @@ def disponibilidade_medico():
 
 
 #__________Listar Consultas Médico__________
+
 def listar_consultas_medico(medico, estado=None):
     query = """
         SELECT c.*, u.nome AS paciente
@@ -482,6 +510,7 @@ def listar_consultas_medico(medico, estado=None):
     return consultas
 
 #__________Menu Listar Consultas Médico por Estado__________
+
 def menu_listar_consultas_medico(medico):
     while True:
         print("\nListar consultas por estado:")
@@ -500,6 +529,7 @@ def menu_listar_consultas_medico(medico):
             print("Opção inválida!")
 
 #__________Ver Relatórios__________
+
 def ver_relatorios(medico):
     cursor.execute("""
         SELECT r.*, u.nome AS paciente
@@ -518,6 +548,7 @@ def ver_relatorios(medico):
     return relatorios
 
 #__________Adicionar Relatório__________
+
 def adicionar_relatorio(medico):
     if not listar_consultas_medico(medico):
         print("Você não tem consultas para adicionar relatório.")
@@ -526,7 +557,7 @@ def adicionar_relatorio(medico):
                                   id_medico=medico["id_medico"])
     if consulta is None: return
 
-    # Verifica se já existe relatório para esta consulta
+    #________Verifica se já existe relatório para esta consulta_________
     cursor.execute(
         "SELECT * FROM relatorios WHERE id_consulta=%s",
         (consulta["id_consulta"],)
@@ -547,6 +578,7 @@ def adicionar_relatorio(medico):
         print("Erro ao adicionar relatório:", e)
 
 #__________Alterar Relatório__________
+
 def alterar_relatorio(medico):
     if not ver_relatorios(medico):
         return
@@ -577,6 +609,7 @@ def alterar_relatorio(medico):
         print("Erro ao alterar relatório:", e)
 
 #__________Marcar Consulta como Realizada__________
+
 def marcar_consulta_realizada(medico):
     if not listar_consultas_medico(medico, "agendada"):
         return
@@ -595,6 +628,7 @@ def marcar_consulta_realizada(medico):
 
 
 #__________Menu Utilizador__________
+
 def menu_utilizador(usuario):
     while True:
         print(f"\nBem-vindo {usuario['nome']}")
@@ -614,6 +648,7 @@ def menu_utilizador(usuario):
         else: print("Opção inválida!")
 
 #__________Menu Médico__________
+
 def menu_medico(medico):
     while True:
         print(f"\nDr(a) {medico['nome']}")
@@ -633,6 +668,7 @@ def menu_medico(medico):
         else: print("Opção inválida!")
 
 #__________Menu Admin__________
+
 def menu_admin(admin):
     while True:
         print("\nMenu ADMIN")
@@ -648,6 +684,8 @@ def menu_admin(admin):
         elif op == "4": apagar_medico()
         elif op == "0": break
         else: print("Opção inválida!")
+
+#__________Menu Principal__________
 
 def principal():
     while True:
