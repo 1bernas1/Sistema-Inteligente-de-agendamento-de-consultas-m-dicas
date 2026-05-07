@@ -132,11 +132,21 @@ def registar():
     nome  = input_ou_voltar("Nome: ")
     if nome  is None: return
     idade = input_ou_voltar("Idade: ")
-    if idade is None or not idade.isdigit():
-        print("Idade inválida!")
-        return
+    while True:
+         if idade is None: return
+         if not idade.isdigit():
+             print("Idade inválida! Digite novamente.")
+             idade = input_ou_voltar("Idade: ")
+             continue
+         break
     genero = input_ou_voltar("Genero (M/F): ")
-    if genero is None: return
+    while True:
+            if genero is None: return
+            if genero.upper() not in ("M", "F"):
+                print("Gênero inválido! Digite 'M' para masculino ou 'F' para feminino.")
+                genero = input_ou_voltar("Genero (M/F): ")
+                continue
+            break
     genero = genero.upper()
     email = input_ou_voltar("Email: ")
     if email is None: return
@@ -187,8 +197,13 @@ def criar_medico():
     print("\nCriar Médico (0 para voltar)")
     nome  = input_ou_voltar("Nome: ")
     if nome  is None: return
-    idade = input_ou_voltar("Idade: ")
-    if idade is None: return
+    while True:
+        idade = input_ou_voltar("Idade: ")
+        if idade is None: return
+        if not idade.isdigit():
+            print("Idade inválida! Digite novamente.")
+            continue
+        break
     genero = input_ou_voltar("Genero (M/F): ")
     if genero is None: return
     esp   = input_ou_voltar("Especialidade: ")
