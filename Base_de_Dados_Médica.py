@@ -131,25 +131,54 @@ def registar():
     print("\nRegisto (0 para voltar)")
     nome  = input_ou_voltar("Nome: ")
     if nome  is None: return
-    idade = input_ou_voltar("Idade: ")
     while True:
+        cursor.execute("SELECT * FROM utilizadores WHERE nome=%s", (nome,))
+        if cursor.fetchone():
+            print("Nome já cadastrado! Digite outro nome.")
+            nome = input_ou_voltar("Nome: ")
+            if nome is None: return
+            continue
+        break
+    while True:
+         idade = input_ou_voltar("Idade: ")
          if idade is None: return
          if not idade.isdigit():
              print("Idade inválida! Digite novamente.")
              idade = input_ou_voltar("Idade: ")
              continue
          break
-    genero = input_ou_voltar("Genero (M/F): ")
     while True:
+            genero = input_ou_voltar("Genero (M/F): ")
             if genero is None: return
             if genero.upper() not in ("M", "F"):
                 print("Gênero inválido! Digite 'M' para masculino ou 'F' para feminino.")
                 genero = input_ou_voltar("Genero (M/F): ")
                 continue
             break
-    genero = genero.upper()
-    email = input_ou_voltar("Email: ")
-    if email is None: return
+    while True:
+        email = input_ou_voltar("Email: ")
+        if email is None: return
+        if "@" not in email or "." not in email:
+            print("Email inválido! Digite um email válido.")
+            email = input_ou_voltar("Email: ")
+            continue
+        break
+    while True:
+        cursor.execute("SELECT * FROM utilizadores WHERE email=%s", (email,))
+        if cursor.fetchone():
+            print("Email já cadastrado! Digite outro email.")
+            email = input_ou_voltar("Email: ")
+            if email is None: return
+            continue
+        break
+    while True:
+        cursor.execute("SELECT * FROM medicos WHERE email=%s", (email,))
+        if cursor.fetchone():
+            print("Email já cadastrado para um médico! Digite outro email.")
+            email = input_ou_voltar("Email: ")
+            if email is None: return
+            continue
+        break
     senha = input_ou_voltar("Senha: ")
     if senha is None: return
     try:
@@ -190,7 +219,6 @@ def login():
     print("Login falhou! Verifique nome ou senha")
     return None
 
-
 #__________Criar Médico__________
 
 def criar_medico():
@@ -198,19 +226,29 @@ def criar_medico():
     nome  = input_ou_voltar("Nome: ")
     if nome  is None: return
     while True:
-        idade = input_ou_voltar("Idade: ")
+        idade = input_ou_voltar("Idade (idade entre 25 e 100): ")
         if idade is None: return
-        if not idade.isdigit():
+        if not idade.isdigit() or int(idade) < 25 or int(idade) > 100:
             print("Idade inválida! Digite novamente.")
             continue
         break
-    genero = input_ou_voltar("Genero (M/F): ")
-    if genero is None: return
+    while True:
+        genero = input_ou_voltar("Genero (M/F): ")
+        if genero is None: return
+        if genero.upper() not in ("M", "F"):
+            print("Gênero inválido! Digite 'M' para masculino ou 'F' para feminino.")
+            continue
+        break
     esp   = input_ou_voltar("Especialidade: ")
     if esp   is None: return
     genero = genero.upper()
-    email = input_ou_voltar("Email: ")
-    if email is None: return
+    while True:
+        email = input_ou_voltar("Email: ")
+        if email is None: return
+        if "@" not in email or "." not in email:
+            print("Email inválido! Digite um email válido.")
+            continue
+        break
     senha = input_ou_voltar("Senha: ")
     if senha is None: return
     try:
@@ -262,9 +300,29 @@ def alterar_medico():
     if medico is None: return
 
     novo_nome  = input("Novo nome: ").strip()
-    nova_idade = input("Nova idade: ").strip()
+
+    while True:
+        nova_idade = input("Nova idade (idade entre 25 e 100): ").strip()
+        if not nova_idade.isdigit() or int(nova_idade) < 25 or int(nova_idade) > 100:
+            print("Digite uma idade válida ou deixe em branco para não alterar.")
+            continue
+        break
+    
     novo_genero = input("Novo gênero (M/F): ").strip()
-    novo_email = input("Novo email: ").strip()
+    while True:
+        if novo_genero.upper() not in ("M", "F", ""):
+            print("Gênero inválido! Digite 'M' para masculino, 'F' para feminino ou deixe em branco para não alterar.")
+            novo_genero = input("Novo gênero (M/F): ").strip()
+            continue
+        break
+    
+    novo_email = input("Novo email (deve conter @): ").strip()
+    while True:
+        if novo_email and ("@" not in novo_email or "." not in novo_email):
+            print("Email inválido! Digite um email válido ou deixe em branco para não alterar.")
+            novo_email = input("Novo email: ").strip()
+            continue
+        break
     nova_senha = input("Nova senha: ").strip()
     nova_esp   = input("Nova especialidade: ").strip()
 
@@ -355,7 +413,7 @@ def marcar_consulta(usuario):
         return
     medico = pedir_medico("ID do médico: ")
     if medico is None: return
-    data = pedir_data("Data DD/MM/AAAA: ")
+    data = pedir_data("Data DD/MM/AAAA com horário entre 09:00 e 18:00: ")
     if data is None: return
     hora = pedir_hora("Hora HH:MM: ", data)
     if hora is None: return
