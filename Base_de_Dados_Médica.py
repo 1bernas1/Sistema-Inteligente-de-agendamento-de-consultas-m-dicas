@@ -14,7 +14,7 @@ db = mysql.connector.connect(
     database="base_de_dados_medica"
 )
 
-cursor = db.cursor(dictionary=True)
+cursor = db.cursor(dictionary=True, buffered=True)
 
 #__________Configuração Email___________
 
@@ -131,18 +131,21 @@ def registar():
     print("\nRegisto (0 para voltar)")
     nome  = input_ou_voltar("Nome: ")
     if nome  is None: return
-    email = input_ou_voltar("Email: ")
-    if email is None: return
     idade = input_ou_voltar("Idade: ")
     if idade is None or not idade.isdigit():
         print("Idade inválida!")
         return
+    genero = input_ou_voltar("Genero (M/F): ")
+    if genero is None: return
+    genero = genero.upper()
+    email = input_ou_voltar("Email: ")
+    if email is None: return
     senha = input_ou_voltar("Senha: ")
     if senha is None: return
     try:
         cursor.execute(
-            "INSERT INTO utilizadores (nome, email, idade, password) VALUES (%s,%s,%s,%s)",
-            (nome, email, int(idade), encriptar(senha))
+            "INSERT INTO utilizadores (nome, idade, email, genero, password) VALUES (%s,%s,%s,%s,%s)",
+            (nome, int(idade), email, genero, encriptar(senha))
         )
         db.commit()
         print("Utilizador registado!")
@@ -184,17 +187,17 @@ def criar_medico():
     print("\nCriar Médico (0 para voltar)")
     nome  = input_ou_voltar("Nome: ")
     if nome  is None: return
-    email = input_ou_voltar("Email: ")
-    if email is None: return
     idade = input_ou_voltar("Idade: ")
     if idade is None: return
-    senha = input_ou_voltar("Senha: ")
-    if senha is None: return
-    esp   = input_ou_voltar("Especialidade: ")
-    if esp   is None: return
     genero = input_ou_voltar("Genero (M/F): ")
     if genero is None: return
+    esp   = input_ou_voltar("Especialidade: ")
+    if esp   is None: return
     genero = genero.upper()
+    email = input_ou_voltar("Email: ")
+    if email is None: return
+    senha = input_ou_voltar("Senha: ")
+    if senha is None: return
     try:
         cursor.execute(
             "INSERT INTO medicos (nome,email,idade,password,especialidade,genero) VALUES (%s,%s,%s,%s,%s,%s)",
