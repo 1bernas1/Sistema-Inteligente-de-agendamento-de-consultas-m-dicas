@@ -20,7 +20,7 @@ cursor = db.cursor(dictionary=True, buffered=True)
 
 
 email_remetente = "alexandre.bernardo.santos@gmail.com"
-email_senha  = "yyct edkm fhjd hqlc"
+email_senha  = "gafp jhan mtoy qeud"
 
 #__________Encriptar Senha__________
 
